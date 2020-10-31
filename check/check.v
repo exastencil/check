@@ -1,4 +1,5 @@
 module check
 
-struct Settings {
+pub struct Settings {
+	store_path string
 }

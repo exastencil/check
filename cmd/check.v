@@ -1,37 +1,54 @@
 module main
 
+import cli { Command }
 import os
+import check
 
 fn main() {
-	command := os.args[0]
-	if os.args.len > 1 {
-		// Options have been passed
-		mode := os.args[1]
-		println('You ran `$command $mode`! Check is a WIP!')
-		println('TODO: Determine which subcommand to run')
-	} else {
-		println('You ran $command')
-		println('TODO: Check unread counts')
+	// Base `greet` command
+	mut cmd := Command{
+		name: 'check'
+		description: 'Checks the internet so you can stay focused'
+		version: '0.0.0'
+		execute: exec
 	}
+	// Base `web` command
+	mut web_cmd := Command{
+		name: 'web'
+		description: 'Follow websites or blogs with RSS or Atom feeds'
+		execute: web
+	}
+	cmd.add_command(web_cmd)
+	cmd.parse(os.args)
 }
 
 // init checks the environment and loads settings
-fn init() {
+fn init() check.Settings {
 	// Check .checkrc
 	println('TODO: Check the .checkrc file or use defaults')
 	// Load settings
-	println('TODO: Populate settings with defaults if empty')
+	return check.Settings{
+		store_path: '~/.check/'
+	}
 }
 
 // `check exec` brings all the databases up to date
-fn exec() {
+fn exec(cmd Command) {
 	println('check exec')
+	settings := init()
+	println('$settings')
 	// Check providers
 	// for each provider
 	// ├─	check accounts
 	// ├─ for each account
 	// │   └─ if account stale
 	// │      └─ check account
+}
+
+// `check web`
+fn web(cmd Command) {
+	settings := init()
+	check.web(settings)
 }
 
 // `check add` adds an account to a provider
