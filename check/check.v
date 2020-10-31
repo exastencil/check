@@ -1,0 +1,4 @@
+module check
+
+struct Settings {
+}
