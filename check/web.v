@@ -24,3 +24,8 @@ pub fn web(settings Settings) {
 	path := settings.store_path
 	println('Checking items in $path')
 }
+
+// `check add web _ident_`
+pub fn add_web(settings Settings, ident string) {
+	println('check.add_web($ident)')
+}
