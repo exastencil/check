@@ -2,14 +2,14 @@ module check
 
 import time
 
-// Feed is the *account* for the web _extension_
+// Feed is the *subscription* for the _web_ provider
 struct Feed {
 	url	    string
 	title   string
 	checked time.Time
 }
 
-// Post is the *item* for the web _extension_
+// Post is the *item* for the _web_ provider
 struct Post {
 	title     string
 	url       string

@@ -37,8 +37,8 @@ fn main() {
 	} else if os.args.len < 5 {
 		match os.args[1] {
 			'add' {
-				if os.args.len < 3 { panic('No provider for adding account') }
-				if os.args.len < 4 { panic('No identifier for adding account') }
+				if os.args.len < 3 { panic('No provider for adding subscription') }
+				if os.args.len < 4 { panic('No identifier for adding subscription') }
 				provider := os.args[2]
 				ident := os.args[3]
 				add(settings, provider, ident)
@@ -56,12 +56,12 @@ fn usage() {
 	println('✔️ check - checks the Internet for you so you can stay productive\n')
 	println('Usage:\n')
 	println(' check             - Shows counts of unread items per extension')
-	println(' check <extension> - Shows unreads for <extension>')
-	println(' check add <extension> <ident>')
-	println('   - Starts the process of adding <extension> with <ident>')
+	println(' check <provider> - Shows unreads for <provider>')
+	println(' check add <provider> <ident>')
+	println('   - Starts the process of adding <provider> with <ident>')
 	println('     e.g. `check add mail user@domain.com`')
 	println('')
-	println('Extensions:\n')
+	println('Providers:\n')
 	println(' 🌐 web - URL to Atom feed')
 	println('          check add https://xkcd.com/atom.xml')
 	println('')
@@ -83,10 +83,10 @@ fn exec(settings check.Settings) {
 	println('$settings')
 	// Check providers
 	// for each provider
-	// ├─	check accounts
-	// ├─ for each account
-	// │   └─ if account stale
-	// │      └─ check account
+	// ├─	check subscriptions
+	// ├─ for each subscription
+	// │   └─ if subscription stale
+	// │      └─ check subscription
 }
 
 // `check add` adds an account to a provider
@@ -102,6 +102,6 @@ fn add(s check.Settings, provider string, ident string) {
 }
 
 // `check $provider` shows unprocessed entries for that provider
-fn provider(provider string) {
+fn provider(s check.Settings, provider string) {
 	println('check $provider')
 }

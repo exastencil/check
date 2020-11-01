@@ -2,7 +2,7 @@ module check
 
 import time
 
-// Mailbox is the *account* for the _mail_ extension
+// Mailbox is the *subscription* for the _mail_ provider
 struct Mailbox {
 	address  string
 	password string
@@ -10,7 +10,7 @@ struct Mailbox {
 	checked  time.Time
 }
 
-// Mail is the *item* for the _mail_ extension
+// Mail is the *item* for the _mail_ provider
 struct Mail {
 	subject   string
 	to        []string

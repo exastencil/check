@@ -2,7 +2,7 @@ module check
 
 import time
 
-// Twitter is the *account* for the _twitter_ extension
+// Twitter is the *subscription* for the _twitter_ provider
 struct Twitter {
 	handle       string
 	password     string
@@ -10,7 +10,7 @@ struct Twitter {
 	checked      time.Time
 }
 
-// Tweet is the *item* for the _twitter_ extension
+// Tweet is the *item* for the _twitter_ provider
 struct Tweet {
 	handle       string
 	display_name string
