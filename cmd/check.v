@@ -72,15 +72,18 @@ fn init() check.Settings {
 	// Check .checkrc
 	// TODO: Check the .checkrc file or use defaults
 	// Load settings
-	return check.Settings{
-		store_path: '~/.check/'
+	home := os.getenv('HOME')
+	settings := check.Settings{
+		store_path: '$home/.check'
 	}
+
+	os.mkdir_all(settings.store_path)
+
+	return settings
 }
 
 // `check exec` brings all the databases up to date
 fn exec(settings check.Settings) {
-	println('check exec')
-	println('$settings')
 	// Check providers
 	// for each provider
 	// ├─	check subscriptions
