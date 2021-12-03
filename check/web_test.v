@@ -19,4 +19,11 @@ fn test_parse_atom_feed() {
 		'https://xkcd.com/2377/',
 		'https://xkcd.com/2376/',
 	]
+
+	assert posts.map(it.published.str()) == [
+		'2020-10-30 00:00:00',
+		'2020-10-28 00:00:00',
+		'2020-10-26 00:00:00',
+		'2020-10-23 00:00:00',
+	]
 }

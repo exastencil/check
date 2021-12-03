@@ -19,8 +19,8 @@ things you can check in on the rest of the world. Simple as that.
 
 Check creates a folder in `$HOME/.check` with all its data. It stores its
 settings in `$HOME/.checkrc`. Each provider can have multiple accounts. Data
-from each provider goes in its own SQLite database e.g. `~/.check/mail.sqlite`
-so you can reset or syncrhonise individual providers.
+from each provider goes in its own SQLite database e.g. `~/.check/mail.db`
+so you can reset or synchronise individual providers.
 
 ## Getting Started
 
@@ -30,7 +30,7 @@ so you can reset or syncrhonise individual providers.
 
 ### 2. Add a provider / account
 
-This depends on the provider but would be something like: 
+This depends on the provider but would be something like:
 `check add twitter exastencil`.
 
 This will start a process for authenticating against that provider if needed.
@@ -42,7 +42,7 @@ The default `check` command returns the status of unread items already stored.
 It does not update the databases. For this there is `check exec`. You will
 need to intermittently run `check exec` in the background to sync accounts.
 You can safely run it frequently, since it checks provider settings for an
-interval at which each account should be checked. 
+interval at which each account should be checked.
 
 A crontab such as the following usually does the trick:
 
