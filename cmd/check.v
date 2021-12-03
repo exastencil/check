@@ -9,7 +9,7 @@ const (
 )
 
 fn main() {
-	settings := init()
+	settings := initialize()
 
 	if os.args.len < 2 {
 		// No options or params: `check`
@@ -18,7 +18,7 @@ fn main() {
 		// Subcommand is passed
 		match os.args[1] {
 			'exec' { exec(settings) }
-			'add'  { println('Usage: check add <extension> <identifier>') }
+			'add'  { println('Usage: check add <provider> <identifier>') }
 			else   { usage() }
 		}
 	} else if os.args.len < 4 {
@@ -63,12 +63,12 @@ fn usage() {
 	println('')
 	println('Providers:\n')
 	println(' 🌐 web - URL to Atom feed')
-	println('          check add https://xkcd.com/atom.xml')
+	println('          check add web https://xkcd.com/atom.xml')
 	println('')
 }
 
-// init checks the environment and loads settings
-fn init() check.Settings {
+// initialize checks the environment and loads settings
+fn initialize() check.Settings {
 	// Check .checkrc
 	// TODO: Check the .checkrc file or use defaults
 	// Load settings
@@ -77,7 +77,9 @@ fn init() check.Settings {
 		store_path: '$home/.check'
 	}
 
-	os.mkdir_all(settings.store_path)
+	os.mkdir_all(settings.store_path) or {
+		println('Could not create the check filestore')
+	}
 
 	return settings
 }
@@ -86,7 +88,7 @@ fn init() check.Settings {
 fn exec(settings check.Settings) {
 	// Check providers
 	// for each provider
-	// ├─	check subscriptions
+	// ├─ check subscriptions
 	// ├─ for each subscription
 	// │   └─ if subscription stale
 	// │      └─ check subscription

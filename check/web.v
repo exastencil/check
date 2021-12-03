@@ -6,42 +6,47 @@ import term
 import time
 
 // Feed is the *subscription* for the _web_ provider
+[table: 'feeds']
 pub struct Feed {
 pub:
-	id      int
+	id      int [primary; sql: serial]
 pub mut:
-	url	    string
-	title   string
+	url	    string [unique; nonull]
+	title   string [nonull]
 	mime    string
 	checked time.Time
 }
 
 // Post is the *item* for the _web_ provider
+[table: 'posts']
 pub struct Post {
 pub:
-	id        int
+	id        int [primary; sql: serial]
 pub mut:
-	title     string
-	url       string
-	ident     string
+	url       string [nonull]
+	title     string [nonull]
+	ident     string [unique; nonull]
 	published time.Time
 	summary   string
 	read      bool
 }
 
-// `check web`
+// web is the function executed when running `check web`
 pub fn web(settings Settings) {
 	path := settings.store_path
 	println('Checking items in $path')
 }
 
-// `check add web _ident_`
+// add_web is the function executed when running `check add web _ident_`
 pub fn add_web(settings Settings, ident string) {
 	mut feed := Feed{url: ident}
 	response := http.get(ident) or {
 		panic('Invalid feed ($ident)')
 	}
-	content_type := response.lheaders["content-type"]
+	content_type := response.header.get(.content_type) or {
+		println('Unable to identify feed type from header ($err)')
+		panic(err)
+	}
 	feed.mime = content_type.split(';')[0]
 	// Determine format if vague
 	if feed.mime == 'text/xml' {
@@ -60,26 +65,31 @@ pub fn add_web(settings Settings, ident string) {
 		println('Unable to connect to database ($err)')
 		panic(err)
 	}
-	db.exec('CREATE TABLE Feed (id INTEGER PRIMARY KEY, url CARCHAR(255) NOT NULL UNIQUE, title VARCHAR(255), mime VARCHAR(120), checked DATETIME);')
-	db.exec("CREATE TABLE Post (id INTEGER PRIMARY KEY, url CARCHAR(255), title VARCHAR(255), ident VARCHAR(255), published DATETIME, summary TEXT DEFAULT '', read BOOLEAN DEFAULT false);")
+	sql db {
+		create table Feed
+	}
+	sql db {
+		create table Post
+	}
+	// db.exec('CREATE TABLE Feed (id INTEGER PRIMARY KEY, url CARCHAR(255) NOT NULL UNIQUE, title VARCHAR(255), mime VARCHAR(120), checked DATETIME);')
+	// db.exec("CREATE TABLE Post (id INTEGER PRIMARY KEY, url CARCHAR(255), title VARCHAR(255), ident VARCHAR(255), published DATETIME, summary TEXT DEFAULT '', read BOOLEAN DEFAULT false);")
 
 	// Add the feed to Feed table
-	existing := sql db { select from Feed where url == ident }
-	if existing.len > 0 {
+	existing := sql db { select from Feed where url == ident limit 1 }
+	if existing.url == feed.url {
 		println(term.yellow('Feed already added!'))
-		feed = existing[0]
+		feed = existing
 	} else {
 		sql db {
 			insert feed into Feed
 		}
 	}
-	println(feed)
-	// TODO Add the initial posts to the Post table
+	// Add the initial posts to the Post table
 	posts := feed.parse(response.text)
 	println(posts)
 }
 
-// Sets the title on the Feed based on its MIME type
+// parse_title sets the title on the Feed based on its MIME type
 fn (mut f Feed) parse_title(text string) {
 	match f.mime {
 		'application/atom+xml' {
@@ -98,7 +108,7 @@ fn (mut f Feed) parse_title(text string) {
 	}
 }
 
-// Parses posts out of the Feed's body
+// parse parses Posts out of the Feed's body
 fn (f Feed) parse(text string) []Post {
 	mut posts := []Post{}
 	// TODO Parse the posts
