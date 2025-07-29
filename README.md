@@ -1,4 +1,5 @@
 # Check Command Line Utility
+
 _Internet checker so you can focus when you need to!_
 
 `check` runs in the background, accessing online services and caching their
@@ -9,6 +10,7 @@ things you can check in on the rest of the world. Simple as that.
 
 - Mail <planned>
 - Twitter <planned>
+- Bluesky <planned>
 - Reddit <planned>
 - Slack <planned>
 - Web (RSS / atom feeds) <planned>
@@ -34,7 +36,7 @@ This depends on the provider but would be something like:
 `check add twitter exastencil`.
 
 This will start a process for authenticating against that provider if needed.
-Repeat this for all the providers and acocunts you want.
+Repeat this for all the providers and accounts you want.
 
 ### 3. Configure background `check`s
 

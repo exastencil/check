@@ -1,2 +1,6 @@
 # Compiled command
 cmd/check
+
+# Zig caches
+zig-out
+.zig-cache
