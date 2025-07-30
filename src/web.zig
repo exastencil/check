@@ -80,6 +80,45 @@ pub fn add(allocator: std.mem.Allocator, url: []const u8) !void {
     std.debug.print("Added feed: {s} ({s})\n", .{ title, url });
 }
 
+/// Removes a feed from the database if exactly one feed contains the title substring
+pub fn remove(allocator: std.mem.Allocator, title_substring: []const u8) !void {
+    // Get the home directory and construct the database path
+    const home_dir = std.posix.getenv("HOME") orelse return error.HomeNotFound;
+    const db_path = try std.fmt.allocPrintZ(allocator, "{s}/.check.db", .{home_dir});
+    defer allocator.free(db_path);
+
+    const flags = zqlite.OpenFlags.ReadWrite;
+    var conn = try zqlite.open(db_path, flags);
+    defer conn.close();
+
+    const pattern = try std.fmt.allocPrint(allocator, "%{s}%", .{title_substring});
+    defer allocator.free(pattern);
+
+    // Execute deletion with a conditional guard
+    const delete_sql =
+        \\DELETE FROM feeds
+        \\WHERE title LIKE ?
+        \\  AND (SELECT COUNT(*) FROM feeds WHERE title LIKE ?) = 1
+    ;
+    var stmt = try conn.prepare(delete_sql);
+    defer stmt.deinit();
+
+    try stmt.bind(.{ pattern, pattern });
+    _ = try stmt.step();
+
+    const changes = conn.changes();
+    try stmt.reset();
+
+    const stderr = std.io.getStdErr().writer();
+    const stdout = std.io.getStdOut().writer();
+
+    if (changes == 0) {
+        try stderr.print("❌ No feeds found containing '{s}' in the title or multiple feeds found.\n", .{title_substring});
+    } else if (changes == 1) {
+        try stdout.print("✅ Removed 1 feed matching '{s}'.\n", .{title_substring});
+    }
+}
+
 /// Lists all feeds in the database
 pub fn list(allocator: std.mem.Allocator) !void {
     // Get the home directory and construct the database path

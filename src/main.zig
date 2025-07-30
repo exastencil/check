@@ -9,6 +9,7 @@ const zqlite = @import("zqlite");
 const check = @import("check.zig");
 const add = @import("add.zig");
 const list = @import("list.zig");
+const remove = @import("remove.zig");
 
 // Types
 const Provider = @import("provider.zig").Provider;
@@ -28,6 +29,7 @@ pub fn main() !void {
         version,
         add,
         list,
+        remove,
     };
     var command = Command.check;
 
@@ -62,7 +64,7 @@ pub fn main() !void {
         }
 
         // First value after the provider should be the identifier
-        if (command == .add and options.provider != .none) {
+        if ((command == .add or command == .remove) and options.provider != .none) {
             ident = arg;
         }
     }
@@ -95,6 +97,9 @@ pub fn main() !void {
         .list => {
             try list.list(allocator, options.provider);
         },
+        .remove => {
+            try remove.remove(allocator, options.provider, ident);
+        },
         .version => {
             try stdout.writeAll("check 0.0.0\n");
         },
@@ -104,15 +109,16 @@ pub fn main() !void {
                 \\
                 \\Usage:
                 \\
-                \\ check            - Shows counts of unread items per extension
-                \\ check <provider> - Shows unreads for <provider>
-                \\ check exec       - Checks all feeds in all providers for new content
+                \\ check                 - Shows counts of unread items per extension
+                \\ check <provider>      - Shows unreads for <provider>
+                \\ check list <provider> - List all subscriptions for <provider>
+                \\ check exec            - Synchronizes all subscriptions
                 \\ check add <provider> <ident>
                 \\   - Starts the process of adding <provider> with <ident>
                 \\     e.g. `check add web https://example.com/feed.xml`
-                \\ check list <provider>
-                \\   - Lists all items for <provider>
-                \\     e.g. `check list web`
+                \\ check remove <provider> <ident>
+                \\   - Removes a subscription of <provider> with <ident|search>
+                \\     In some cases a search string can be used instead of an ident
                 \\
                 \\Providers:
                 \\
