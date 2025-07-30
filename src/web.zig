@@ -304,7 +304,7 @@ pub fn check(allocator: std.mem.Allocator) !void {
 
     // Query to get unread posts grouped by feed
     const sql =
-        \\SELECT f.title as feed_title, p.title as post_title, p.published
+        \\SELECT f.title, p.title, p.published
         \\FROM posts p
         \\JOIN feeds f ON p.feed_id = f.id
         \\WHERE p.read = false
@@ -315,6 +315,7 @@ pub fn check(allocator: std.mem.Allocator) !void {
     defer stmt.deinit();
 
     const stdout = std.io.getStdOut().writer();
+    var current_feed_buffer: [256]u8 = undefined;
     var current_feed: []const u8 = "";
     var has_posts = false;
 
@@ -325,11 +326,14 @@ pub fn check(allocator: std.mem.Allocator) !void {
 
         // Check if we're starting a new feed section
         if (!std.mem.eql(u8, current_feed, feed_title)) {
-            if (has_posts) {
+            if (current_feed.len > 0) {
                 try stdout.print("\n", .{}); // Add spacing between feeds
             }
             try stdout.print("📰 {s}\n", .{feed_title});
-            current_feed = feed_title;
+            // Copy the feed title to our buffer to maintain it across iterations
+            const copy_len = @min(feed_title.len, current_feed_buffer.len - 1);
+            @memcpy(current_feed_buffer[0..copy_len], feed_title[0..copy_len]);
+            current_feed = current_feed_buffer[0..copy_len];
         }
 
         // Format the published date
@@ -340,8 +344,6 @@ pub fn check(allocator: std.mem.Allocator) !void {
 
     if (!has_posts) {
         try stdout.print("No unread web posts found.\n", .{});
-    } else {
-        try stdout.print("\n", .{}); // Final newline
     }
 }
 
