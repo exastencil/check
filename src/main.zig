@@ -8,6 +8,7 @@ const zqlite = @import("zqlite");
 // Commands
 const check = @import("check.zig");
 const add = @import("add.zig");
+const list = @import("list.zig");
 
 // Types
 const Provider = @import("provider.zig").Provider;
@@ -25,6 +26,7 @@ pub fn main() !void {
         help,
         version,
         add,
+        list,
     };
     var command = Command.check;
 
@@ -84,7 +86,10 @@ pub fn main() !void {
             check.check();
         },
         .add => {
-            add.add(options.provider, ident);
+            try add.add(allocator, options.provider, ident);
+        },
+        .list => {
+            try list.list(allocator, options.provider);
         },
         .version => {
             try stdout.writeAll("check 0.0.0\n");
@@ -99,7 +104,10 @@ pub fn main() !void {
                 \\ check <provider> - Shows unreads for <provider>
                 \\ check add <provider> <ident>
                 \\   - Starts the process of adding <provider> with <ident>
-                \\     e.g. `check add mail user@domain.com`
+                \\     e.g. `check add web https://example.com/feed.xml`
+                \\ check list <provider>
+                \\   - Lists all items for <provider>
+                \\     e.g. `check list web`
                 \\
                 \\Providers:
                 \\
