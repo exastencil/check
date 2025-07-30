@@ -84,7 +84,7 @@ pub fn main() !void {
             // NOTE: Consider adding a settings table once we have some
         },
         .check => {
-            check.check();
+            try check.check(allocator, options.provider);
         },
         .exec => {
             try check.exec(allocator);

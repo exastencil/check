@@ -252,6 +252,60 @@ fn saveFeedToDatabase(allocator: std.mem.Allocator, feed: Feed) !void {
     try updateFeedCheckedTime(allocator, new_feed.id);
 }
 
+/// Shows unread posts grouped by feed (for `check web` command)
+pub fn check(allocator: std.mem.Allocator) !void {
+    // Get the home directory and construct the database path
+    const home_dir = std.posix.getenv("HOME") orelse return error.HomeNotFound;
+    const db_path = try std.fmt.allocPrintZ(allocator, "{s}/.check.db", .{home_dir});
+    defer allocator.free(db_path);
+
+    const flags = zqlite.OpenFlags.ReadOnly;
+    var conn = try zqlite.open(db_path, flags);
+    defer conn.close();
+
+    // Query to get unread posts grouped by feed
+    const sql =
+        \\SELECT f.title as feed_title, p.title as post_title, p.published
+        \\FROM posts p
+        \\JOIN feeds f ON p.feed_id = f.id
+        \\WHERE p.read = false
+        \\ORDER BY f.title, p.published DESC
+    ;
+
+    var stmt = try conn.prepare(sql);
+    defer stmt.deinit();
+
+    const stdout = std.io.getStdOut().writer();
+    var current_feed: []const u8 = "";
+    var has_posts = false;
+
+    while (try stmt.step()) {
+        const feed_title = stmt.text(0);
+        const post_title = stmt.text(1);
+        const published_timestamp = stmt.int(2);
+
+        // Check if we're starting a new feed section
+        if (!std.mem.eql(u8, current_feed, feed_title)) {
+            if (has_posts) {
+                try stdout.print("\n", .{}); // Add spacing between feeds
+            }
+            try stdout.print("📰 {s}\n", .{feed_title});
+            current_feed = feed_title;
+        }
+
+        // Format the published date
+        const published_date = formatTimestamp(published_timestamp);
+        try stdout.print("  • {s} ({s})\n", .{ post_title, published_date });
+        has_posts = true;
+    }
+
+    if (!has_posts) {
+        try stdout.print("No unread web posts found.\n", .{});
+    } else {
+        try stdout.print("\n", .{}); // Final newline
+    }
+}
+
 /// Checks all feeds in the database for new posts
 pub fn checkAllFeeds(allocator: std.mem.Allocator) !void {
     // Get all feeds from the database
@@ -613,6 +667,27 @@ fn parseISO8601Date(date_str: []const u8) !i64 {
 /// Check if a year is a leap year
 fn isLeapYear(year: u16) bool {
     return (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0);
+}
+
+/// Format a Unix timestamp as a readable date string
+fn formatTimestamp(timestamp: i64) []const u8 {
+    // For now, return a simple relative time format
+    const current_time = std.time.timestamp();
+    const diff = current_time - timestamp;
+
+    if (diff < 60) {
+        return "just now";
+    } else if (diff < 3600) {
+        return "recently";
+    } else if (diff < 86400) {
+        return "today";
+    } else if (diff < 172800) {
+        return "yesterday";
+    } else if (diff < 604800) {
+        return "this week";
+    } else {
+        return "older";
+    }
 }
 
 /// Strips CDATA tags from a string if present
