@@ -22,6 +22,7 @@ pub fn main() !void {
     // Command configuration
     const Command = enum {
         check,
+        exec,
         init,
         help,
         version,
@@ -85,6 +86,9 @@ pub fn main() !void {
         .check => {
             check.check();
         },
+        .exec => {
+            try check.exec(allocator);
+        },
         .add => {
             try add.add(allocator, options.provider, ident);
         },
@@ -102,6 +106,7 @@ pub fn main() !void {
                 \\
                 \\ check            - Shows counts of unread items per extension
                 \\ check <provider> - Shows unreads for <provider>
+                \\ check exec       - Checks all feeds in all providers for new content
                 \\ check add <provider> <ident>
                 \\   - Starts the process of adding <provider> with <ident>
                 \\     e.g. `check add web https://example.com/feed.xml`

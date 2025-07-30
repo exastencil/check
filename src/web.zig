@@ -246,6 +246,72 @@ fn saveFeedToDatabase(allocator: std.mem.Allocator, feed: Feed) !void {
 
     // Automatically check the feed for new posts after saving
     try checkFeed(allocator, new_feed);
+
+    // Update the checked time for the feed
+    try updateFeedCheckedTime(allocator, new_feed.id);
+}
+
+/// Checks all feeds in the database for new posts
+pub fn checkAllFeeds(allocator: std.mem.Allocator) !void {
+    // Get all feeds from the database
+    const feeds = try getAllFeeds(allocator);
+    defer allocator.free(feeds);
+
+    // Iterate through feeds and check each one
+    for (feeds) |feed| {
+        std.debug.print("Checking feed: {s}\n", .{feed.title});
+        try checkFeed(allocator, feed);
+    }
+}
+
+/// Get all feeds from the database
+fn getAllFeeds(allocator: std.mem.Allocator) ![]Feed {
+    const home_dir = std.posix.getenv("HOME") orelse return error.HomeNotFound;
+    const db_path = try std.fmt.allocPrintZ(allocator, "{s}/.check.db", .{home_dir});
+    defer allocator.free(db_path);
+
+    const flags = zqlite.OpenFlags.ReadOnly;
+    var conn = try zqlite.open(db_path, flags);
+    defer conn.close();
+
+    const sql = "SELECT id, url, title, mime, checked FROM feeds ORDER BY id";
+    var stmt = try conn.prepare(sql);
+    defer stmt.deinit();
+
+    var feed_list = std.ArrayList(Feed).init(allocator);
+
+    while (try stmt.step()) {
+        const feed = Feed{
+            .id = @intCast(stmt.int(0)),
+            .url = try allocator.dupe(u8, stmt.text(1)),
+            .title = try allocator.dupe(u8, stmt.text(2)),
+            .mime = try allocator.dupe(u8, stmt.text(3)),
+            .checked = stmt.int(4),
+        };
+        try feed_list.append(feed);
+    }
+
+    return feed_list.toOwnedSlice();
+}
+
+/// Update the last checked time for a feed
+fn updateFeedCheckedTime(allocator: std.mem.Allocator, feed_id: usize) !void {
+    const home_dir = std.posix.getenv("HOME") orelse return error.HomeNotFound;
+    const db_path = try std.fmt.allocPrintZ(allocator, "{s}/.check.db", .{home_dir});
+    defer allocator.free(db_path);
+
+    const flags = zqlite.OpenFlags.ReadWrite;
+    var conn = try zqlite.open(db_path, flags);
+    defer conn.close();
+
+    const sql = "UPDATE feeds SET checked = ? WHERE id = ?";
+    var stmt = try conn.prepare(sql);
+    defer stmt.deinit();
+
+    const current_time = std.time.timestamp();
+    try stmt.bind(.{ current_time, feed_id });
+
+    _ = try stmt.step();
 }
 
 /// Parse a post from RSS item or Atom entry content
