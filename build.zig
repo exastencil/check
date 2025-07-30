@@ -16,9 +16,12 @@ pub fn build(b: *std.Build) void {
         .root_module = exe_mod,
     });
 
-    // libcurl bindings
-    const libcurl = b.dependency("curl", .{});
+    // libcurl bindings - use system curl instead of vendored
+    const libcurl = b.dependency("curl", .{
+        .link_vendor = false,
+    });
     exe.root_module.addImport("curl", libcurl.module("curl"));
+    exe.linkSystemLibrary("curl");
 
     // SQLite3
     const zqlite = b.dependency("zqlite", .{
