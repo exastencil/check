@@ -56,7 +56,8 @@ pub fn add(allocator: std.mem.Allocator, url: []const u8) !void {
     const title_end_index_rel = std.mem.indexOf(u8, response_body[title_start_index + title_start_tag.len ..], title_end_tag) orelse return error.TitleNotFound;
     const title_end_index = title_start_index + title_start_tag.len + title_end_index_rel;
     const raw_title = response_body[title_start_index + title_start_tag.len .. title_end_index];
-    const title = stripCDATA(raw_title);
+    const stripped_title = stripCDATA(raw_title);
+    const title = decodeHtmlEntities(allocator, stripped_title) catch stripped_title;
 
     // Get the mime type from the response headers
     const mime_type = if (resp.getHeader("content-type") catch null) |header| header.get() else "unknown";
@@ -158,7 +159,7 @@ pub fn checkFeed(allocator: std.mem.Allocator, feed: Feed) !void {
         const item_content = response_body[item_content_start..item_content_end];
 
         // Parse individual post from item content
-        if (parsePost(item_content)) |parsed_post| {
+        if (parsePost(allocator, item_content)) |parsed_post| {
             var post = parsed_post;
             post.feed_id = feed.id;
             // Try to save the post to database
@@ -314,8 +315,62 @@ fn updateFeedCheckedTime(allocator: std.mem.Allocator, feed_id: usize) !void {
     _ = try stmt.step();
 }
 
+/// Decode HTML entities into UTF-8 characters
+fn decodeHtmlEntities(allocator: std.mem.Allocator, input: []const u8) ![]const u8 {
+    // For simplicity, handle a few common entities
+    var buffer = try allocator.alloc(u8, input.len * 2); // Allow for expansion
+    var size: usize = 0;
+    var i: usize = 0;
+
+    while (i < input.len) {
+        if (input[i] == '&') {
+            // Look for the semicolon to end the entity
+            var j = i + 1;
+            while (j < input.len and input[j] != ';') {
+                j += 1;
+            }
+
+            if (j < input.len and input[j] == ';') {
+                const entity = input[i + 1 .. j];
+                if (std.mem.eql(u8, entity, "amp")) {
+                    buffer[size] = '&';
+                    size += 1;
+                } else if (std.mem.eql(u8, entity, "lt")) {
+                    buffer[size] = '<';
+                    size += 1;
+                } else if (std.mem.eql(u8, entity, "gt")) {
+                    buffer[size] = '>';
+                    size += 1;
+                } else if (std.mem.eql(u8, entity, "quot")) {
+                    buffer[size] = '"';
+                    size += 1;
+                } else if (std.mem.eql(u8, entity, "apos")) {
+                    buffer[size] = '\'';
+                    size += 1;
+                } else {
+                    // Unknown entity, copy as-is
+                    @memcpy(buffer[size .. size + (j - i + 1)], input[i .. j + 1]);
+                    size += j - i + 1;
+                }
+                i = j + 1;
+            } else {
+                // No closing semicolon, copy the ampersand
+                buffer[size] = input[i];
+                size += 1;
+                i += 1;
+            }
+        } else {
+            buffer[size] = input[i];
+            size += 1;
+            i += 1;
+        }
+    }
+
+    return try allocator.dupe(u8, buffer[0..size]);
+}
+
 /// Parse a post from RSS item or Atom entry content
-fn parsePost(item_content: []const u8) !Post {
+fn parsePost(allocator: std.mem.Allocator, item_content: []const u8) !Post {
     // Extract title
     const title_start_tag = "<title>";
     const title_end_tag = "</title>";
@@ -327,10 +382,11 @@ fn parsePost(item_content: []const u8) !Post {
     const title_start_idx = title_start_idx_opt.? + title_start_tag.len;
     const title_end_idx = title_end_idx_opt.?;
     const raw_title = item_content[title_start_idx..title_end_idx];
-    const title = stripCDATA(raw_title);
+    const stripped_title = stripCDATA(raw_title);
+    const title = decodeHtmlEntities(allocator, stripped_title) catch stripped_title;
 
     // Extract URL from <link> tag or <guid> tag
-    var url: []const u8 = "";
+    var raw_url: []const u8 = "";
     const link_start_tag = "<link>";
     const link_end_tag = "</link>";
     const link_start_idx_opt = std.mem.indexOf(u8, item_content, link_start_tag);
@@ -338,7 +394,7 @@ fn parsePost(item_content: []const u8) !Post {
     if (link_start_idx_opt != null and link_end_idx_opt != null) {
         const link_start_idx = link_start_idx_opt.? + link_start_tag.len;
         const link_end_idx = link_end_idx_opt.?;
-        url = item_content[link_start_idx..link_end_idx];
+        raw_url = item_content[link_start_idx..link_end_idx];
     } else {
         // Try to extract from <guid> tag as fallback
         const guid_start_tag = "<guid>";
@@ -348,11 +404,13 @@ fn parsePost(item_content: []const u8) !Post {
         if (guid_start_idx_opt != null and guid_end_idx_opt != null) {
             const guid_start_idx = guid_start_idx_opt.? + guid_start_tag.len;
             const guid_end_idx = guid_end_idx_opt.?;
-            url = item_content[guid_start_idx..guid_end_idx];
+            raw_url = item_content[guid_start_idx..guid_end_idx];
         } else {
             return error.URLNotFound;
         }
     }
+
+    const url = decodeHtmlEntities(allocator, raw_url) catch raw_url;
 
     // Extract summary/description
     var summary: []const u8 = "";
@@ -364,7 +422,8 @@ fn parsePost(item_content: []const u8) !Post {
         const desc_start_idx = desc_start_idx_opt.? + desc_start_tag.len;
         const desc_end_idx = desc_end_idx_opt.?;
         const raw_summary = item_content[desc_start_idx..desc_end_idx];
-        summary = stripCDATA(raw_summary);
+        const stripped_summary = stripCDATA(raw_summary);
+        summary = decodeHtmlEntities(allocator, stripped_summary) catch stripped_summary;
     }
 
     // Extract published date from various possible tags
